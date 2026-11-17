@@ -40,6 +40,8 @@ export const VirtualClassroomSelectionScreen: React.FC = () => {
                       src={cls.previewImage}
                       alt={`${cls.title} virtual classroom environment preview`}
                       referrerPolicy="no-referrer"
+                      loading="lazy"
+                      decoding="async"
                       onError={() =>
                         setFailedImages((prev) => ({ ...prev, [cls.id]: true }))
                       }

@@ -175,17 +175,98 @@ interface AppContextValue {
 
 const AppContext = createContext<AppContextValue | null>(null);
 
+const VALID_SCREENS: ScreenId[] = [
+  'login',
+  'dashboard',
+  'ar-library',
+  'ar-viewer',
+  'virtual-classrooms',
+  'virtual-classroom-view',
+  'activities',
+  'quiz-player',
+  'quiz-results',
+  'progress',
+  'lms',
+];
+
+function parseHashRoute(): {
+  screen: ScreenId | null;
+  id?: string;
+  ar?: boolean;
+} {
+  try {
+    const raw = window.location.hash.replace(/^#\/?/, '');
+    if (!raw) return { screen: null };
+    const [pathPart, queryPart] = raw.split('?');
+    const candidate = pathPart.replace(/\/+$/, '') as ScreenId;
+    const screen = VALID_SCREENS.includes(candidate) ? candidate : null;
+    const params = new URLSearchParams(queryPart || '');
+    return {
+      screen,
+      id: params.get('id') ?? undefined,
+      ar: params.get('ar') === '1',
+    };
+  } catch {
+    return { screen: null };
+  }
+}
+
+function writeHashRoute(
+  screen: ScreenId,
+  opts?: { id?: string; ar?: boolean },
+) {
+  try {
+    const params = new URLSearchParams();
+    if (opts?.id) params.set('id', opts.id);
+    if (opts?.ar) params.set('ar', '1');
+    const qs = params.toString();
+    const targetHash = `#/${screen}${qs ? `?${qs}` : ''}`;
+    if (window.location.hash !== targetHash) {
+      window.location.hash = targetHash;
+    }
+  } catch {
+    // Ignore restricted history/hash environments
+  }
+}
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [persisted, setPersisted] = useState<PersistedState>(loadInitialPersisted);
 
-  const [screen, setScreen] = useState<ScreenId>(() =>
-    persisted.currentUserId ? 'dashboard' : 'login',
+  const initialRoute = parseHashRoute();
+  const [pendingDeepRoute, setPendingDeepRoute] = useState<{
+    screen: ScreenId;
+    id?: string;
+    ar?: boolean;
+  } | null>(() =>
+    !persisted.currentUserId && initialRoute.screen && initialRoute.screen !== 'login'
+      ? { screen: initialRoute.screen, id: initialRoute.id, ar: initialRoute.ar }
+      : null,
   );
+
+  const [screen, setScreen] = useState<ScreenId>(() => {
+    if (!persisted.currentUserId) return 'login';
+    if (initialRoute.screen && initialRoute.screen !== 'login') return initialRoute.screen;
+    return 'dashboard';
+  });
   const [screenLoading, setScreenLoading] = useState(false);
-  const [selectedMaterialId, setSelectedMaterialId] = useState<string>('ar-human-heart');
-  const [launchInARMode, setLaunchInARMode] = useState<boolean>(false);
-  const [selectedClassroomId, setSelectedClassroomId] = useState<string>('vc-anatomy-lab');
-  const [selectedActivityId, setSelectedActivityId] = useState<string>('act-heart-quiz');
+  const [selectedMaterialId, setSelectedMaterialId] = useState<string>(() =>
+    initialRoute.screen === 'ar-viewer' && initialRoute.id
+      ? initialRoute.id
+      : 'ar-human-heart',
+  );
+  const [launchInARMode, setLaunchInARMode] = useState<boolean>(() =>
+    Boolean(initialRoute.screen === 'ar-viewer' && initialRoute.ar),
+  );
+  const [selectedClassroomId, setSelectedClassroomId] = useState<string>(() =>
+    initialRoute.screen === 'virtual-classroom-view' && initialRoute.id
+      ? initialRoute.id
+      : 'vc-anatomy-lab',
+  );
+  const [selectedActivityId, setSelectedActivityId] = useState<string>(() =>
+    initialRoute.screen === 'quiz-player' && initialRoute.id
+      ? initialRoute.id
+      : 'act-heart-quiz',
+  );
   const [latestQuizResult, setLatestQuizResult] = useState<QuizAttemptResult | null>(null);
 
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -196,6 +277,30 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     confirmLabel: 'Confirm',
     onConfirm: () => {},
   });
+
+  // Sync browser Back / Forward hash changes
+  useEffect(() => {
+    const onHashChange = () => {
+      const parsed = parseHashRoute();
+      if (!parsed.screen) return;
+      if (!persisted.currentUserId && parsed.screen !== 'login') {
+        setPendingDeepRoute({ screen: parsed.screen, id: parsed.id, ar: parsed.ar });
+        setScreen('login');
+        return;
+      }
+      if (parsed.screen === 'ar-viewer' && parsed.id) {
+        setSelectedMaterialId(parsed.id);
+        setLaunchInARMode(Boolean(parsed.ar));
+      } else if (parsed.screen === 'virtual-classroom-view' && parsed.id) {
+        setSelectedClassroomId(parsed.id);
+      } else if (parsed.screen === 'quiz-player' && parsed.id) {
+        setSelectedActivityId(parsed.id);
+      }
+      setScreen(parsed.screen);
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, [persisted.currentUserId]);
 
   useEffect(() => {
     try {
@@ -236,49 +341,89 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setConfirmDialog((prev) => ({ ...prev, open: false }));
   }, []);
 
-  const navigateWithBriefTransition = useCallback((target: ScreenId, heavy = false) => {
-    if (heavy) {
-      setScreenLoading(true);
-      setScreen(target);
-      window.setTimeout(() => setScreenLoading(false), 180);
-    } else {
-      setScreen(target);
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []);
+  const navigateWithBriefTransition = useCallback(
+    (
+      target: ScreenId,
+      heavy = false,
+      hashOpts?: { id?: string; ar?: boolean },
+    ) => {
+      writeHashRoute(target, hashOpts);
+      if (heavy) {
+        setScreenLoading(true);
+        setScreen(target);
+        window.setTimeout(() => setScreenLoading(false), 180);
+      } else {
+        setScreen(target);
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    },
+    [],
+  );
 
   const loginAsUser = useCallback(
     (userId: string) => {
       const user = DEMO_USERS.find((u) => u.id === userId);
       if (!user) return;
       setPersisted((prev) => ({ ...prev, currentUserId: userId }));
-      navigateWithBriefTransition('dashboard');
+      if (pendingDeepRoute) {
+        const { screen: targetScreen, id, ar } = pendingDeepRoute;
+        setPendingDeepRoute(null);
+        if (targetScreen === 'ar-viewer' && id) {
+          setSelectedMaterialId(id);
+          setLaunchInARMode(Boolean(ar));
+        } else if (targetScreen === 'virtual-classroom-view' && id) {
+          setSelectedClassroomId(id);
+        } else if (targetScreen === 'quiz-player' && id) {
+          setSelectedActivityId(id);
+        }
+        navigateWithBriefTransition(
+          targetScreen,
+          targetScreen === 'ar-viewer' || targetScreen === 'virtual-classroom-view',
+          id ? { id, ar } : undefined,
+        );
+      } else {
+        navigateWithBriefTransition('dashboard');
+      }
       showToast(`Signed in as ${user.name}`, user.levelOrDepartment, 'info');
     },
-    [navigateWithBriefTransition, showToast],
+    [navigateWithBriefTransition, pendingDeepRoute, showToast],
   );
 
   const logout = useCallback(() => {
     setPersisted((prev) => ({ ...prev, currentUserId: null }));
     setScreen('login');
+    writeHashRoute('login');
   }, []);
 
   const navigateTo = useCallback(
     (target: ScreenId) => {
-      if (target === 'ar-viewer' || target === 'virtual-classroom-view') {
-        navigateWithBriefTransition(target, true);
+      if (target === 'ar-viewer') {
+        navigateWithBriefTransition(target, true, {
+          id: selectedMaterialId,
+          ar: launchInARMode,
+        });
+      } else if (target === 'virtual-classroom-view') {
+        navigateWithBriefTransition(target, true, { id: selectedClassroomId });
+      } else if (target === 'quiz-player') {
+        navigateWithBriefTransition(target, false, { id: selectedActivityId });
       } else {
         navigateWithBriefTransition(target, false);
       }
     },
-    [navigateWithBriefTransition],
+    [
+      launchInARMode,
+      navigateWithBriefTransition,
+      selectedActivityId,
+      selectedClassroomId,
+      selectedMaterialId,
+    ],
   );
 
   const openARMaterial = useCallback(
     (materialId: string, startAR = false) => {
       setSelectedMaterialId(materialId);
       setLaunchInARMode(startAR);
-      navigateWithBriefTransition('ar-viewer', true);
+      navigateWithBriefTransition('ar-viewer', true, { id: materialId, ar: startAR });
     },
     [navigateWithBriefTransition],
   );
@@ -286,7 +431,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const openVirtualClassroom = useCallback(
     (classroomId: string) => {
       setSelectedClassroomId(classroomId);
-      navigateWithBriefTransition('virtual-classroom-view', true);
+      navigateWithBriefTransition('virtual-classroom-view', true, { id: classroomId });
     },
     [navigateWithBriefTransition],
   );
@@ -294,7 +439,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const startActivity = useCallback(
     (activityId: string) => {
       setSelectedActivityId(activityId);
-      navigateWithBriefTransition('quiz-player');
+      navigateWithBriefTransition('quiz-player', false, { id: activityId });
     },
     [navigateWithBriefTransition],
   );

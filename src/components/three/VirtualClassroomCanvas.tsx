@@ -32,6 +32,7 @@ export const VirtualClassroomCanvas: React.FC<VirtualClassroomCanvasProps> = ({
   const mountRef = useRef<HTMLDivElement | null>(null);
   const pinRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [contextLost, setContextLost] = useState(false);
+  const [webglUnsupported, setWebglUnsupported] = useState(false);
 
   const onSelectStationRef = useRef(onSelectStation);
   onSelectStationRef.current = onSelectStation;
@@ -125,7 +126,13 @@ export const VirtualClassroomCanvas: React.FC<VirtualClassroomCanvasProps> = ({
     camera.position.set(0, 3.2, 7.6);
     cameraRef.current = camera;
 
-    const renderer = createStudioRenderer(container, isSoftwareGl, false);
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = createStudioRenderer(container, isSoftwareGl, false);
+    } catch {
+      setWebglUnsupported(true);
+      return;
+    }
     const domEl = renderer.domElement;
     domEl.style.width = '100%';
     domEl.style.height = '100%';
@@ -543,11 +550,15 @@ export const VirtualClassroomCanvas: React.FC<VirtualClassroomCanvasProps> = ({
         })}
       </div>
 
-      {contextLost && (
+      {(contextLost || webglUnsupported) && (
         <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center p-6 text-center text-white z-20">
-          <p className="text-base font-semibold mb-1">Virtual Environment Paused</p>
+          <p className="text-base font-semibold mb-1">
+            {webglUnsupported ? 'Virtual 3D Environment Unavailable' : 'Virtual Environment Paused'}
+          </p>
           <p className="text-sm text-slate-300 max-w-sm">
-            WebGL context was suspended. Return to Classroom Selection or reload to resume.
+            {webglUnsupported
+              ? 'WebGL is unavailable on this browser or device. Use the station tabs above and the lesson panel to review all virtual lab takeaways.'
+              : 'WebGL context was suspended. Return to Classroom Selection or reload to resume.'}
           </p>
         </div>
       )}

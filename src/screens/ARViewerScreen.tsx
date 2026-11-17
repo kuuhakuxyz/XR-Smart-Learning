@@ -68,14 +68,25 @@ export const ARViewerScreen: React.FC = () => {
   };
 
   useEffect(() => {
+    if (arMode && arSource === 'live-camera' && streamRef.current && videoRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [arMode, arSource]);
+
+  useEffect(() => {
     return () => stopCameraStream();
   }, []);
 
   const handleRequestLiveCamera = async () => {
     setCameraError(null);
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    if (
+      !window.isSecureContext ||
+      !navigator.mediaDevices ||
+      !navigator.mediaDevices.getUserMedia
+    ) {
       setCameraError(
-        'Camera API is unavailable in this browser context. Using Simulated Study Desk AR Fallback instead.',
+        'Camera access requires HTTPS and browser media support. Using Simulated Study Desk AR Fallback instead.',
       );
       setArSource('desk-fallback');
       setArMode(true);
@@ -90,12 +101,6 @@ export const ARViewerScreen: React.FC = () => {
       setArSource('live-camera');
       setArMode(true);
       setArDialogOpen(false);
-      window.setTimeout(() => {
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          videoRef.current.play().catch(() => {});
-        }
-      }, 60);
       showToast('Live AR camera overlay active', 'Drag to rotate and tap labels to inspect parts.', 'info');
     } catch {
       setCameraError(

@@ -46,6 +46,7 @@ export const ModelViewerCanvas: React.FC<ModelViewerCanvasProps> = ({
   const mountRef = useRef<HTMLDivElement | null>(null);
   const labelRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [contextLost, setContextLost] = useState(false);
+  const [webglUnsupported, setWebglUnsupported] = useState(false);
 
   const propsRef = useRef({
     selectedPartId,
@@ -137,7 +138,13 @@ export const ModelViewerCanvas: React.FC<ModelViewerCanvasProps> = ({
     camera.position.set(0, 1.15, 3.85);
     cameraRef.current = camera;
 
-    const renderer = createStudioRenderer(container, isSoftwareGl, true);
+    let renderer: THREE.WebGLRenderer;
+    try {
+      renderer = createStudioRenderer(container, isSoftwareGl, true);
+    } catch {
+      setWebglUnsupported(true);
+      return;
+    }
     if (!propsRef.current.arMode) {
       renderer.setClearColor(0x0f172a, 1);
     }
@@ -378,11 +385,15 @@ export const ModelViewerCanvas: React.FC<ModelViewerCanvasProps> = ({
         })}
       </div>
 
-      {contextLost && (
+      {(contextLost || webglUnsupported) && (
         <div className="absolute inset-0 bg-slate-900/95 flex flex-col items-center justify-center p-6 text-center text-white z-20">
-          <p className="text-base font-semibold mb-1">3D Viewport Paused</p>
+          <p className="text-base font-semibold mb-1">
+            {webglUnsupported ? '3D WebGL Unavailable on This Device' : '3D Viewport Paused'}
+          </p>
           <p className="text-sm text-slate-300 max-w-sm">
-            WebGL graphics context was temporarily suspended by the browser. Reload or switch models to resume.
+            {webglUnsupported
+              ? 'Your browser or device has disabled WebGL graphics. Use the labeled component list on the right to study all structures.'
+              : 'WebGL graphics context was temporarily suspended by the browser. Reload or switch models to resume.'}
           </p>
         </div>
       )}

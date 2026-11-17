@@ -149,6 +149,7 @@ export const LoginScreen: React.FC = () => {
                 src={ASSETS.heroBanner}
                 alt="Malaysian students exploring interactive holographic STEM models in a modern university lab"
                 referrerPolicy="no-referrer"
+                decoding="async"
                 onError={() => setImgError(true)}
                 className="w-full h-full object-cover"
               />

@@ -1,3 +1,8 @@
+import heroBannerImg from '../assets/images/xr_learning_hero_1794916232050.jpg';
+import anatomyLabImg from '../assets/images/lab_human_anatomy_1794916232782.jpg';
+import solarSystemLabImg from '../assets/images/lab_solar_system_1794916233568.jpg';
+import earthScienceLabImg from '../assets/images/lab_earth_science_1794916233444.jpg';
+import arDeskBackdropImg from '../assets/images/ar_study_desk_backdrop_1794916233682.jpg';
 import {
   AchievementBadge,
   Announcement,
@@ -15,11 +20,11 @@ import {
 } from '../types';
 
 export const ASSETS = {
-  heroBanner: '/src/assets/images/xr_learning_hero_1794916232050.jpg',
-  anatomyLab: '/src/assets/images/lab_human_anatomy_1794916232782.jpg',
-  solarSystemLab: '/src/assets/images/lab_solar_system_1794916233568.jpg',
-  earthScienceLab: '/src/assets/images/lab_earth_science_1794916233444.jpg',
-  arDeskBackdrop: '/src/assets/images/ar_study_desk_backdrop_1794916233682.jpg',
+  heroBanner: heroBannerImg,
+  anatomyLab: anatomyLabImg,
+  solarSystemLab: solarSystemLabImg,
+  earthScienceLab: earthScienceLabImg,
+  arDeskBackdrop: arDeskBackdropImg,
 };
 
 export const DEMO_USERS: DemoUser[] = [

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>XR Smart Learning — Redirecting</title>
+    <script>
+      (function () {
+        var repoBase = '/XR-Smart-Learning';
+        var path = window.location.pathname;
+        var search = window.location.search || '';
+        var hash = window.location.hash || '';
+
+        if (hash && hash.indexOf('#/') === 0) {
+          window.location.replace(repoBase + '/' + search + hash);
+          return;
+        }
+
+        var subPath = path;
+        if (subPath.indexOf(repoBase) === 0) {
+          subPath = subPath.slice(repoBase.length);
+        }
+        subPath = subPath.replace(/^\/+|\/+$/g, '');
+
+        var targetHash = subPath ? '#/' + subPath : '#/dashboard';
+        window.location.replace(repoBase + '/' + search + targetHash);
+      })();
+    </script>
+  </head>
+  <body>
+    <p>Redirecting to XR Smart Learning...</p>
+  </body>
+</html>
