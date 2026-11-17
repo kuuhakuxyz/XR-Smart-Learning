@@ -40,6 +40,8 @@ jobs:
           npm run lint
           npm run build
 
+      # Requires GitHub Pages Source set to "GitHub Actions" in repository Settings -> Pages.
+      # (`enablement: true` is omitted because GITHUB_TOKEN cannot initialize Pages; it requires a PAT.)
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v6
 
