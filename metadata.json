@@ -1,0 +1,6 @@
+{
+  "name": "XR Smart Learning",
+  "description": "Interactive AR, 3D, and Virtual Classroom educational platform prototype for Malaysian secondary schools and universities.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": []
+}
